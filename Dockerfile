@@ -14,7 +14,7 @@ RUN pip install --upgrade pip
 
 # requirements.txt 복사 및 의존성 설치
 COPY requirements.txt .
-RUN pip install --no-cache-dir --prefer-binary -r requirements.txt
+RUN pip install --no-cache-dir --only-binary=:all: --prefer-binary -r requirements.txt
 
 # 애플리케이션 코드 복사
 COPY . .
@@ -25,6 +25,9 @@ EXPOSE 8000
 # 환경 변수 설정
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_PREFER_BINARY=1
+ENV PIP_ONLY_BINARY=:all:
 
 # 애플리케이션 실행
 CMD ["gunicorn", "main:app", "-w", "4", "-k", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

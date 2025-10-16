@@ -77,25 +77,6 @@ class UploadTimeService:
             }
         }
 
-    def convert_24h_to_12h(self, hour: int) -> tuple[str, int]:
-        """
-        24시간 형식을 12시간 형식으로 변환합니다.
-        
-        Args:
-            hour: 24시간 형식의 시간 (0-23)
-            
-        Returns:
-            (오전/오후, 12시간 형식 시간) 튜플
-        """
-        if hour == 0:
-            return "오전", 12
-        elif hour < 12:
-            return "오전", hour
-        elif hour == 12:
-            return "오후", 12
-        else:
-            return "오후", hour - 12
-
     def extract_time_from_text(self, text: str) -> Optional[str]:
         """
         텍스트에서 시간 정보를 추출합니다.
@@ -110,29 +91,27 @@ class UploadTimeService:
             # 다양한 시간 패턴 매칭 (우선순위 순서)
             time_patterns = [
                 # 저녁 8~10시, 아침 9시, 낮 12시 (시간대 키워드가 있는 경우)
-                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시~(\d{1,2})시', lambda m: self._convert_time_keyword_range(m[0], m[1], m[2])),
-                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})-(\d{1,2})시', lambda m: self._convert_time_keyword_range(m[0], m[1], m[2], "-")),
-                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시', lambda m: self._convert_time_keyword(m[0], m[1])),
-                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시경', lambda m: self._convert_time_keyword(m[0], m[1]) + "경"),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시~(\d{1,2})시', lambda m: f"{m[0]} {m[1]}시~{m[2]}시"),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})-(\d{1,2})시', lambda m: f"{m[0]} {m[1]}-{m[2]}시"),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시', lambda m: f"{m[0]} {m[1]}시"),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시경', lambda m: f"{m[0]} {m[1]}시경"),
                 
                 # 오후 6시, 오전 9시 (이미 오전/오후가 있는 경우)
                 (r'(오전|오후)\s*(\d{1,2})시', lambda m: f"{m[0]} {m[1]}시"),
-                # 오후 6-8시, 오전 9-11시
                 (r'(오전|오후)\s*(\d{1,2})-(\d{1,2})시', lambda m: f"{m[0]} {m[1]}-{m[2]}시"),
-                # 오후 6시경, 오전 9시경
                 (r'(오전|오후)\s*(\d{1,2})시경', lambda m: f"{m[0]} {m[1]}시경"),
-                # 오후 6시~8시, 오전 9시~11시
                 (r'(오전|오후)\s*(\d{1,2})시~(\d{1,2})시', lambda m: f"{m[0]} {m[1]}시~{m[2]}시"),
+                
                 # 18:00, 20:30 (24시간 형식)
-                (r'(\d{1,2}):(\d{2})', lambda m: self._convert_time_format(m[0], m[1])),
+                (r'(\d{1,2}):(\d{2})', lambda m: f"{m[0]}:{m[1]}"),
                 # 18시, 20시 (24시간 형식)
-                (r'(\d{1,2})시', lambda m: self._convert_single_hour(m[0])),
+                (r'(\d{1,2})시', lambda m: f"{m[0]}시"),
                 # 6-8시, 18-20시 (시간 범위)
-                (r'(\d{1,2})-(\d{1,2})시', lambda m: self._convert_time_range(m[0], m[1])),
+                (r'(\d{1,2})-(\d{1,2})시', lambda m: f"{m[0]}-{m[1]}시"),
                 # 6시경, 18시경
-                (r'(\d{1,2})시경', lambda m: self._convert_single_hour(m[0]) + "경"),
+                (r'(\d{1,2})시경', lambda m: f"{m[0]}시경"),
                 # 6시~8시, 18시~20시
-                (r'(\d{1,2})시~(\d{1,2})시', lambda m: self._convert_time_range(m[0], m[1], "~"))
+                (r'(\d{1,2})시~(\d{1,2})시', lambda m: f"{m[0]}시~{m[1]}시")
             ]
             
             for pattern, formatter in time_patterns:
@@ -149,91 +128,6 @@ class UploadTimeService:
         except Exception as error:
             print(f"시간 추출 오류: {error}")
             return None
-
-    def _convert_time_format(self, hour_str: str, min_str: str) -> str:
-        """시간:분 형식을 오전/오후 형식으로 변환"""
-        hour = int(hour_str)
-        period, hour_12 = self.convert_24h_to_12h(hour)
-        return f"{period} {hour_12}시{min_str}분"
-
-    def _convert_single_hour(self, hour_str: str) -> str:
-        """단일 시간을 오전/오후 형식으로 변환"""
-        hour = int(hour_str)
-        period, hour_12 = self.convert_24h_to_12h(hour)
-        return f"{period} {hour_12}시"
-
-    def _convert_time_range(self, start_hour_str: str, end_hour_str: str, separator: str = "-") -> str:
-        """시간 범위를 오전/오후 형식으로 변환"""
-        start_hour = int(start_hour_str)
-        end_hour = int(end_hour_str)
-        
-        start_period, start_hour_12 = self.convert_24h_to_12h(start_hour)
-        end_period, end_hour_12 = self.convert_24h_to_12h(end_hour)
-        
-        # 같은 오전/오후인 경우
-        if start_period == end_period:
-            return f"{start_period} {start_hour_12}{separator}{end_hour_12}시"
-        else:
-            # 다른 오전/오후인 경우
-            return f"{start_period} {start_hour_12}시{separator}{end_period} {end_hour_12}시"
-
-    def _convert_time_keyword(self, keyword: str, hour_str: str) -> str:
-        """시간대 키워드를 오전/오후 형식으로 변환"""
-        hour = int(hour_str)
-        
-        # 시간대 키워드에 따른 오전/오후 판단
-        if keyword in ["저녁", "밤"]:
-            # 저녁/밤은 오후로 처리
-            if hour <= 12:
-                hour += 12  # 8시 -> 20시
-            period, hour_12 = self.convert_24h_to_12h(hour)
-            return f"{period} {hour_12}시"
-        elif keyword in ["아침", "새벽"]:
-            # 아침/새벽은 오전으로 처리
-            if hour > 12:
-                hour -= 12  # 20시 -> 8시
-            period, hour_12 = self.convert_24h_to_12h(hour)
-            return f"{period} {hour_12}시"
-        elif keyword == "낮":
-            # 낮은 12시 전후로 판단
-            if hour <= 12:
-                period, hour_12 = self.convert_24h_to_12h(hour)
-            else:
-                period, hour_12 = self.convert_24h_to_12h(hour)
-            return f"{period} {hour_12}시"
-        else:
-            # 기본적으로 24시간 형식으로 처리
-            period, hour_12 = self.convert_24h_to_12h(hour)
-            return f"{period} {hour_12}시"
-
-    def _convert_time_keyword_range(self, keyword: str, start_hour_str: str, end_hour_str: str, separator: str = "~") -> str:
-        """시간대 키워드가 있는 시간 범위를 오전/오후 형식으로 변환"""
-        start_hour = int(start_hour_str)
-        end_hour = int(end_hour_str)
-        
-        # 시간대 키워드에 따른 시간 조정
-        if keyword in ["저녁", "밤"]:
-            # 저녁/밤은 오후로 처리
-            if start_hour <= 12:
-                start_hour += 12
-            if end_hour <= 12:
-                end_hour += 12
-        elif keyword in ["아침", "새벽"]:
-            # 아침/새벽은 오전으로 처리
-            if start_hour > 12:
-                start_hour -= 12
-            if end_hour > 12:
-                end_hour -= 12
-        
-        start_period, start_hour_12 = self.convert_24h_to_12h(start_hour)
-        end_period, end_hour_12 = self.convert_24h_to_12h(end_hour)
-        
-        # 같은 오전/오후인 경우
-        if start_period == end_period:
-            return f"{start_period} {start_hour_12}{separator}{end_hour_12}시"
-        else:
-            # 다른 오전/오후인 경우
-            return f"{start_period} {start_hour_12}시{separator}{end_period} {end_hour_12}시"
 
     def is_holiday(self, target_date: date) -> Optional[Dict[str, str]]:
         """

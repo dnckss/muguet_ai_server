@@ -109,6 +109,12 @@ class UploadTimeService:
         try:
             # 다양한 시간 패턴 매칭 (우선순위 순서)
             time_patterns = [
+                # 저녁 8~10시, 아침 9시, 낮 12시 (시간대 키워드가 있는 경우)
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시~(\d{1,2})시', lambda m: self._convert_time_keyword_range(m[0], m[1], m[2])),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})-(\d{1,2})시', lambda m: self._convert_time_keyword_range(m[0], m[1], m[2], "-")),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시', lambda m: self._convert_time_keyword(m[0], m[1])),
+                (r'(저녁|아침|낮|밤|새벽)\s*(\d{1,2})시경', lambda m: self._convert_time_keyword(m[0], m[1]) + "경"),
+                
                 # 오후 6시, 오전 9시 (이미 오전/오후가 있는 경우)
                 (r'(오전|오후)\s*(\d{1,2})시', lambda m: f"{m[0]} {m[1]}시"),
                 # 오후 6-8시, 오전 9-11시
@@ -160,6 +166,64 @@ class UploadTimeService:
         """시간 범위를 오전/오후 형식으로 변환"""
         start_hour = int(start_hour_str)
         end_hour = int(end_hour_str)
+        
+        start_period, start_hour_12 = self.convert_24h_to_12h(start_hour)
+        end_period, end_hour_12 = self.convert_24h_to_12h(end_hour)
+        
+        # 같은 오전/오후인 경우
+        if start_period == end_period:
+            return f"{start_period} {start_hour_12}{separator}{end_hour_12}시"
+        else:
+            # 다른 오전/오후인 경우
+            return f"{start_period} {start_hour_12}시{separator}{end_period} {end_hour_12}시"
+
+    def _convert_time_keyword(self, keyword: str, hour_str: str) -> str:
+        """시간대 키워드를 오전/오후 형식으로 변환"""
+        hour = int(hour_str)
+        
+        # 시간대 키워드에 따른 오전/오후 판단
+        if keyword in ["저녁", "밤"]:
+            # 저녁/밤은 오후로 처리
+            if hour <= 12:
+                hour += 12  # 8시 -> 20시
+            period, hour_12 = self.convert_24h_to_12h(hour)
+            return f"{period} {hour_12}시"
+        elif keyword in ["아침", "새벽"]:
+            # 아침/새벽은 오전으로 처리
+            if hour > 12:
+                hour -= 12  # 20시 -> 8시
+            period, hour_12 = self.convert_24h_to_12h(hour)
+            return f"{period} {hour_12}시"
+        elif keyword == "낮":
+            # 낮은 12시 전후로 판단
+            if hour <= 12:
+                period, hour_12 = self.convert_24h_to_12h(hour)
+            else:
+                period, hour_12 = self.convert_24h_to_12h(hour)
+            return f"{period} {hour_12}시"
+        else:
+            # 기본적으로 24시간 형식으로 처리
+            period, hour_12 = self.convert_24h_to_12h(hour)
+            return f"{period} {hour_12}시"
+
+    def _convert_time_keyword_range(self, keyword: str, start_hour_str: str, end_hour_str: str, separator: str = "~") -> str:
+        """시간대 키워드가 있는 시간 범위를 오전/오후 형식으로 변환"""
+        start_hour = int(start_hour_str)
+        end_hour = int(end_hour_str)
+        
+        # 시간대 키워드에 따른 시간 조정
+        if keyword in ["저녁", "밤"]:
+            # 저녁/밤은 오후로 처리
+            if start_hour <= 12:
+                start_hour += 12
+            if end_hour <= 12:
+                end_hour += 12
+        elif keyword in ["아침", "새벽"]:
+            # 아침/새벽은 오전으로 처리
+            if start_hour > 12:
+                start_hour -= 12
+            if end_hour > 12:
+                end_hour -= 12
         
         start_period, start_hour_12 = self.convert_24h_to_12h(start_hour)
         end_period, end_hour_12 = self.convert_24h_to_12h(end_hour)

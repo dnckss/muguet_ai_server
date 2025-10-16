@@ -3,9 +3,7 @@ services:
     name: ai-server
     env: python
     plan: free
-    buildCommand: |
-      pip install --upgrade pip
-      pip install --no-cache-dir --only-binary=:all: --prefer-binary -r requirements.txt
+    buildCommand: ./build.sh
     startCommand: gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
     envVars:
       - key: PYTHON_VERSION
@@ -14,8 +12,6 @@ services:
         value: 1
       - key: PIP_PREFER_BINARY
         value: 1
-      - key: PIP_ONLY_BINARY
-        value: ":all:"
       - key: OPENAI_API_KEY
         sync: false
       - key: DEFAULT_MODEL

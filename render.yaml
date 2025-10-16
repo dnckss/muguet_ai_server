@@ -1,13 +1,16 @@
 services:
   - type: web
     name: ai-server
-    env: python
+    env: docker
     plan: free
-    buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn main:app -w 4 -k uvicorn.workers.UvicornWorker --bind 0.0.0.0:$PORT
+    dockerfilePath: ./Dockerfile
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.0
+      - key: PIP_NO_CACHE_DIR
+        value: 1
+      - key: PIP_PREFER_BINARY
+        value: 1
       - key: OPENAI_API_KEY
         sync: false
       - key: DEFAULT_MODEL

@@ -1,6 +1,6 @@
-# Core FastAPI dependencies
+# Core FastAPI dependencies - using stable versions
 fastapi==0.104.1
-uvicorn[standard]==0.24.0
+uvicorn==0.24.0
 gunicorn==21.2.0
 
 # OpenAI and HTTP clients
@@ -17,7 +17,3 @@ python-multipart==0.0.6
 # Date and time utilities
 python-dateutil==2.8.2
 pytz==2023.3
-
-# Additional dependencies for production
-setuptools>=65.0.0
-wheel>=0.37.0

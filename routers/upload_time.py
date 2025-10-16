@@ -55,7 +55,8 @@ async def recommend_upload_time(
                 "date": target_date.isoformat(),
                 "dayName": target_date.strftime('%Y년 %m월 %d일 %A'),
                 "contentType": content_type,
-                "recommendation": recommendation,
+                "recommendation": recommendation["text"],
+                "extractedTime": recommendation["extractedTime"],
                 "timestamp": datetime.now().isoformat()
             },
             timestamp=datetime.now().isoformat()

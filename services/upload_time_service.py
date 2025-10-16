@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional, List
 from datetime import date, datetime, timedelta
 import sys
 import os
+import re
 
 # 현재 디렉토리를 Python 경로에 추가
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -76,6 +77,63 @@ class UploadTimeService:
             }
         }
 
+    def extract_time_from_text(self, text: str) -> Optional[str]:
+        """
+        텍스트에서 시간 정보를 추출합니다.
+        
+        Args:
+            text: 시간이 포함된 텍스트
+            
+        Returns:
+            추출된 시간 문자열 또는 None
+        """
+        try:
+            # 다양한 시간 패턴 매칭
+            time_patterns = [
+                # 오후 6시, 오전 9시
+                r'(오전|오후)\s*(\d{1,2})시',
+                # 6시, 18시
+                r'(\d{1,2})시',
+                # 오후 6-8시, 오전 9-11시
+                r'(오전|오후)\s*(\d{1,2})-(\d{1,2})시',
+                # 6-8시, 18-20시
+                r'(\d{1,2})-(\d{1,2})시',
+                # 오후 6시경, 오전 9시경
+                r'(오전|오후)\s*(\d{1,2})시경',
+                # 6시경, 18시경
+                r'(\d{1,2})시경',
+                # 18:00, 20:30
+                r'(\d{1,2}):(\d{2})',
+                # 오후 6시~8시, 오전 9시~11시
+                r'(오전|오후)\s*(\d{1,2})시~(\d{1,2})시',
+                # 6시~8시, 18시~20시
+                r'(\d{1,2})시~(\d{1,2})시'
+            ]
+            
+            for pattern in time_patterns:
+                matches = re.findall(pattern, text)
+                if matches:
+                    # 첫 번째 매치를 반환
+                    match = matches[0]
+                    if isinstance(match, tuple):
+                        if len(match) == 2:  # 오전/오후 + 시간
+                            period, hour = match
+                            return f"{period} {hour}시"
+                        elif len(match) == 3:  # 오전/오후 + 시작시간 + 끝시간
+                            period, start_hour, end_hour = match
+                            return f"{period} {start_hour}-{end_hour}시"
+                        elif len(match) == 4:  # 시작시간:분 + 끝시간:분
+                            start_hour, start_min, end_hour, end_min = match
+                            return f"{start_hour}:{start_min}-{end_hour}:{end_min}"
+                    else:  # 단일 시간
+                        return f"{match}시"
+            
+            return None
+            
+        except Exception as error:
+            print(f"시간 추출 오류: {error}")
+            return None
+
     def is_holiday(self, target_date: date) -> Optional[Dict[str, str]]:
         """
         날짜가 명절인지 확인
@@ -110,7 +168,7 @@ class UploadTimeService:
         self, 
         target_date: date, 
         content_type: str = 'general'
-    ) -> str:
+    ) -> Dict[str, Any]:
         """
         특정 날짜의 업로드 시간 추천
         
@@ -119,7 +177,7 @@ class UploadTimeService:
             content_type: 콘텐츠 타입
             
         Returns:
-            업로드 시간 추천 텍스트
+            업로드 시간 추천 정보 (텍스트와 추출된 시간 포함)
         """
         try:
             day_type = self.get_day_type(target_date)
@@ -158,7 +216,14 @@ class UploadTimeService:
                 temperature=settings.TEMPERATURE
             )
 
-            return response["message"]
+            # 응답에서 시간 추출
+            recommendation_text = response["message"]
+            extracted_time = self.extract_time_from_text(recommendation_text)
+            
+            return {
+                "text": recommendation_text,
+                "extractedTime": extracted_time
+            }
 
         except Exception as error:
             print(f"업로드 시간 추천 서비스 오류: {error}")
@@ -185,13 +250,14 @@ class UploadTimeService:
             # 7일간의 추천 생성
             for i in range(7):
                 current_date = start_date + timedelta(days=i)
-                recommendation = await self.get_upload_time_recommendation(current_date, content_type)
+                recommendation_data = await self.get_upload_time_recommendation(current_date, content_type)
                 weekly_recommendations.append({
                     "date": current_date.isoformat(),
                     "dayName": current_date.strftime('%Y년 %m월 %d일 %A'),
                     "dayType": self.get_day_type(current_date),
                     "holiday": self.is_holiday(current_date),
-                    "recommendation": recommendation
+                    "recommendation": recommendation_data["text"],
+                    "extractedTime": recommendation_data["extractedTime"]
                 })
 
             # 주간 전체 분석을 위한 프롬프트
@@ -215,11 +281,18 @@ class UploadTimeService:
                 temperature=settings.TEMPERATURE
             )
 
+            # 주간 분석에서도 시간 추출
+            weekly_analysis_text = weekly_analysis["message"]
+            weekly_extracted_time = self.extract_time_from_text(weekly_analysis_text)
+
             return {
                 "weekStart": start_date.isoformat(),
                 "contentType": content_type,
                 "dailyRecommendations": weekly_recommendations,
-                "weeklyAnalysis": weekly_analysis["message"],
+                "weeklyAnalysis": {
+                    "text": weekly_analysis_text,
+                    "extractedTime": weekly_extracted_time
+                },
                 "summary": {
                     "totalDays": 7,
                     "holidayDays": len(holidays),

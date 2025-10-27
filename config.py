@@ -1,6 +1,5 @@
 import os
 from dotenv import load_dotenv
-import env
 
 # 환경변수 로드 여기에 추가
 load_dotenv()

@@ -1,7 +1,8 @@
 import os
 from dotenv import load_dotenv
+import env
 
-# 환경변수 로드
+# 환경변수 로드 여기에 추가
 load_dotenv()
 
 class Settings:
@@ -18,7 +19,10 @@ class Settings:
     DEBUG: bool = os.getenv("DEBUG", "True").lower() == "true"
     
     # CORS 설정
-    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3001","https://muguet.vercel.app")
+    FRONTEND_URL: str = os.getenv(
+    "FRONTEND_URL",
+    "http://localhost:3000" if os.getenv("ENV") == "dev" else "https://muguet.vercel.app"
+)
 
 # 전역 설정 인스턴스
 settings = Settings()

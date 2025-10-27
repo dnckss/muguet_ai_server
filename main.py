@@ -39,14 +39,14 @@ async def root():
     """기본 엔드포인트"""
     return {
         "message": "ChatGPT API 서버가 실행 중입니다!",
-    "endpoints": {
-      "chat": "/api/chat/message",
-      "uploadTime": "/api/upload-time/recommend",
-      "weeklyUploadTime": "/api/upload-time/weekly-recommend",
-      "uploadStats": "/api/upload-time/stats",
-      "health": "/health",
-      "docs": "/docs"
-    },
+        "endpoints": {
+            "chat": "/api/chat/message",
+            "uploadTime": "/api/upload-time/recommend",
+            "weeklyUploadTime": "/api/upload-time/weekly-recommend",
+            "uploadStats": "/api/upload-time/stats",
+            "health": "/health",
+            "docs": "/docs"
+        },
         "timestamp": datetime.now().isoformat()
     }
 

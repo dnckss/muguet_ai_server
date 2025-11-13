@@ -19,9 +19,9 @@ class Settings:
     
     # CORS 설정
     FRONTEND_URL: str = os.getenv(
-    "FRONTEND_URL",
-    "http://localhost:3000" if os.getenv("ENV") == "dev" else "https://muguet.vercel.app"
-)
+        "FRONTEND_URL",
+        "http://localhost:3000" if os.getenv("ENV") == "dev" else "https://www.muguet.cloud"
+    )
 
 # 전역 설정 인스턴스
 settings = Settings()
